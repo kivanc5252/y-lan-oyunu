@@ -2,61 +2,74 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Online Pro Yılan - Tekil Rekorlar</title>
+    <title>Online Pro Yılan - Modlar Fix</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
         body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #game-wrapper { position: relative; border: 5px solid #333; box-shadow: 0 0 30px rgba(0,255,0,0.2); border-radius: 8px; width: 400px; height: 400px; }
+        #game-wrapper { position: relative; border: 5px solid #333; box-shadow: 0 0 30px rgba(0,255,0,0.4); border-radius: 8px; width: 400px; height: 400px; background: #111; }
         canvas { display: block; background: #111; border-radius: 5px; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; padding: 20px; box-sizing: border-box; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; padding: 20px; box-sizing: border-box; text-align: center; }
         .hidden { display: none; }
-        h1 { color: #39ff14; text-shadow: 0 0 10px #39ff14; font-size: 2em; margin: 0 0 15px 0; }
-        .menu-buttons { display: flex; flex-direction: column; gap: 10px; width: 100%; align-items: center; }
-        button { background: #39ff14; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 5px; width: 200px; font-size: 1em; transition: 0.2s; color: #000; }
+        h1 { color: #39ff14; text-shadow: 0 0 10px #39ff14; font-size: 1.8em; margin-bottom: 10px; }
+        .menu-buttons { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: center; }
+        button { background: #39ff14; border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 5px; width: 180px; font-size: 0.9em; transition: 0.2s; color: #000; }
         button:hover { background: #fff; transform: scale(1.05); }
-        .leaderboard-container { width: 100%; margin-top: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 5px; box-sizing: border-box; max-height: 160px; overflow-y: auto; }
-        .leaderboard-container::-webkit-scrollbar { width: 6px; }
-        .leaderboard-container::-webkit-scrollbar-thumb { background: #39ff14; border-radius: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { position: sticky; top: 0; background: #222; color: #39ff14; padding: 5px; text-align: left; }
-        td { padding: 8px 5px; border-bottom: 1px solid #222; }
-        .score-val { color: #39ff14; font-weight: bold; text-align: right; }
-        #hud { position: absolute; top: 10px; left: 10px; font-size: 18px; font-weight: bold; color: #39ff14; z-index: 5; text-shadow: 1px 1px 2px #000; }
+        .leaderboard-container { width: 100%; margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 5px; max-height: 140px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { position: sticky; top: 0; background: #222; color: #39ff14; padding: 5px; }
+        td { padding: 5px; border-bottom: 1px solid #222; }
+        .gold-row { background: rgba(255, 215, 0, 0.2) !important; color: #ffd700; font-weight: bold; border: 1px solid #ffd700; }
+        #hud { position: absolute; top: 10px; left: 10px; font-size: 16px; font-weight: bold; color: #39ff14; z-index: 5; text-shadow: 1px 1px 2px #000; }
     </style>
 </head>
 <body>
 
 <div id="game-wrapper">
-    <div id="hud">Puan: 0</div>
+    <div id="hud">Puan: 0 <span id="active-mod-text" style="margin-left:10px; color:#aaa;">Mod: KLASİK</span></div>
+    
     <div id="menu-screen" class="overlay">
-        <h1>PİKSEL YILAN</h1>
+        <h1>PİKSEL YILAN PRO</h1>
         <div class="menu-buttons">
             <button onclick="checkNameAndStart()">OYNA</button>
-            <button onclick="showScreen('settings-screen')">AYARLAR</button>
+            <button onclick="showScreen('mods-screen')" style="background:#00d4ff">MODLAR</button>
+            <button onclick="showScreen('settings-screen')" style="background:#888">AYARLAR</button>
         </div>
         <div class="leaderboard-container">
-            <h3 style="margin: 5px 0; font-size: 14px; color: #39ff14; text-align: center;">🏆 EN İYİ REKORLAR</h3>
             <table id="menu-leaderboard"></table>
         </div>
     </div>
-    <div id="settings-screen" class="overlay hidden">
-        <h2>ZORLUK SEÇ</h2>
+
+    <div id="mods-screen" class="overlay hidden">
+        <h1>MOD SEÇ</h1>
         <div class="menu-buttons">
-            <button onclick="setDifficulty(180, 'KOLAY')">KOLAY</button>
-            <button onclick="setDifficulty(100, 'ORTA')">ORTA</button>
-            <button onclick="setDifficulty(60, 'ZOR')">ZOR</button>
-            <button style="background:#555; color:#ddd;" onclick="showScreen('menu-screen')">GERİ</button>
+            <button onclick="selectMod('KLASİK')">KLASİK</button>
+            <button onclick="selectMod('NEON')" style="background:#ff00ff; color:white;">NEON GECESİ</button>
+            <button onclick="selectMod('HIZ')" style="background:#ff4400; color:white;">HIZ TRENİ</button>
+            <button onclick="selectMod('PORTAL')" style="background:#0044ff; color:white;">PORTAL</button>
+            <button onclick="showScreen('menu-screen')" style="background:#555; color:white;">GERİ</button>
         </div>
     </div>
+
+    <div id="settings-screen" class="overlay hidden">
+        <h2>HIZ AYARI</h2>
+        <div class="menu-buttons">
+            <button onclick="setDifficulty(180)">KOLAY</button>
+            <button onclick="setDifficulty(100)">ORTA</button>
+            <button onclick="setDifficulty(60)">ZOR</button>
+            <button onclick="showScreen('menu-screen')">GERİ</button>
+        </div>
+    </div>
+
     <div id="gameover-screen" class="overlay hidden">
         <h1 style="color:#ff4444;">OYUN BİTTİ</h1>
-        <h2 id="final-score-text">Skorun: 0</h2>
+        <h2 id="final-score-text">0</h2>
         <div class="menu-buttons">
-            <button onclick="resetGame()">TEKRAR DENE</button>
-            <button style="background:#555" onclick="backToMenu()">ANA MENÜ</button>
+            <button onclick="startGame()">TEKRAR DENE</button>
+            <button onclick="showScreen('menu-screen')" style="background:#555">ANA MENÜ</button>
         </div>
     </div>
+
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 </div>
 
@@ -64,26 +77,12 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const box = 20;
-let gameInterval, score, snake, food, direction, isGameOver = false;
+let gameInterval, score, snake, food, goldenFood, direction, isGameOver = false;
 let gameSpeed = 100;
+let currentMod = 'KLASİK';
 let playerName = localStorage.getItem("snakeName");
 
-let assets = { bg: false, head: false, body: false, tail: false, apple: false };
-const bgImg = new Image(); bgImg.src = 'arka_plan.jpg';
-bgImg.onload = () => assets.bg = true;
-const headImg = new Image(); headImg.src = 'yilan_kafa.png';
-headImg.onload = () => assets.head = true;
-const bodyImg = new Image(); bodyImg.src = 'yilan_govde.png';
-bodyImg.onload = () => assets.body = true;
-const tailImg = new Image(); tailImg.src = 'yilan_kuyruk.png';
-tailImg.onload = () => assets.tail = true;
-const appleImg = new Image(); appleImg.src = 'elma.png';
-appleImg.onload = () => assets.apple = true;
-
-const eatSound = new Audio('ye.mp3');
-const bgMusic = new Audio('muzik.mp3');
-bgMusic.loop = true;
-
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAWdCEJgOQmP-1A4bvYNxmzWsfnfJQ6-vE",
   authDomain: "yilanoyunu-96766.firebaseapp.com",
@@ -97,26 +96,36 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- ANLIK LİDERLİK TABLOSU ---
+// GÖRSEL KONTROLÜ
+let assets = { bg: new Image(), apple: new Image() };
+let isBgLoaded = false;
+assets.bg.src = 'arka_plan.jpg'; 
+assets.bg.onload = () => { isBgLoaded = true; };
+assets.apple.src = 'elma.png';
+
 db.ref('scores').on('value', snap => {
     let scoresMap = {};
     snap.forEach(c => {
         let val = c.val();
-        // Aynı kişi varsa en yüksek skoru tut
-        if(!scoresMap[val.name] || val.score > scoresMap[val.name].score) {
-            scoresMap[val.name] = val;
-        }
+        if(!scoresMap[val.name] || val.score > scoresMap[val.name].score) scoresMap[val.name] = val;
     });
-    let sortedScores = Object.values(scoresMap).sort((a,b) => b.score - a.score);
-    renderTable(sortedScores);
+    let sorted = Object.values(scoresMap).sort((a,b) => b.score - a.score);
+    const table = document.getElementById("menu-leaderboard");
+    table.innerHTML = "<tr><th>#</th><th>Oyuncu</th><th>Skor</th></tr>";
+    sorted.forEach((s, i) => {
+        let isGold = (i === 0);
+        table.innerHTML += `<tr class="${isGold ? 'gold-row' : ''}">
+            <td>${isGold ? '👑' : i+1}</td>
+            <td>${s.name}</td>
+            <td style="text-align:right">${s.score}</td>
+        </tr>`;
+    });
 });
 
-function renderTable(data) {
-    const table = document.getElementById("menu-leaderboard");
-    table.innerHTML = "<tr><th>#</th><th>Oyuncu</th><th style='text-align:right'>Skor</th></tr>";
-    data.forEach((s, i) => {
-        table.innerHTML += `<tr><td>${i+1}</td><td>${s.name}</td><td class='score-val'>${s.score}</td></tr>`;
-    });
+function selectMod(m) {
+    currentMod = m;
+    document.getElementById("active-mod-text").innerText = "Mod: " + m;
+    showScreen('menu-screen');
 }
 
 function showScreen(id) {
@@ -124,16 +133,10 @@ function showScreen(id) {
     if(id !== 'none') document.getElementById(id).classList.remove('hidden');
 }
 
-function setDifficulty(val, label) {
-    gameSpeed = val;
-    alert("Zorluk: " + label);
-    showScreen('menu-screen');
-}
-
 function checkNameAndStart() {
     if(!playerName) {
         playerName = prompt("Adınız:");
-        if(!playerName) playerName = "Oyuncu" + Math.floor(Math.random()*100);
+        if(!playerName) playerName = "Oyuncu" + Math.floor(Math.random()*99);
         localStorage.setItem("snakeName", playerName);
     }
     startGame();
@@ -141,19 +144,16 @@ function checkNameAndStart() {
 
 function startGame() {
     showScreen('none');
-    isGameOver = false;
-    score = 0;
-    document.getElementById("hud").innerText = "Puan: 0";
-    direction = "RIGHT";
+    score = 0; direction = "RIGHT"; isGameOver = false;
     snake = [{x: 9*box, y: 10*box}, {x: 8*box, y: 10*box}];
     spawnFood();
-    bgMusic.play().catch(()=>{});
     if(gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(draw, gameSpeed);
+    gameInterval = setInterval(draw, currentMod === 'HIZ' ? 120 : gameSpeed);
 }
 
 function spawnFood() {
     food = { x: Math.floor(Math.random()*19)*box, y: Math.floor(Math.random()*19)*box };
+    goldenFood = Math.random() < 0.15 ? { x: Math.floor(Math.random()*19)*box, y: Math.floor(Math.random()*19)*box } : null;
 }
 
 document.addEventListener("keydown", e => {
@@ -165,66 +165,82 @@ document.addEventListener("keydown", e => {
 });
 
 function draw() {
-    if(assets.bg) ctx.drawImage(bgImg, 0, 0, 400, 400);
-    else { ctx.fillStyle = "#111"; ctx.fillRect(0,0,400,400); }
-
-    snake.forEach((p, i) => {
-        let img = null; let angle = 0;
-        if(i === 0) {
-            img = assets.head ? headImg : null;
-            if(direction==="UP") angle=-Math.PI/2; else if(direction==="DOWN") angle=Math.PI/2;
-            else if(direction==="LEFT") angle=Math.PI;
-        } else if(i === snake.length-1) {
-            img = assets.tail ? tailImg : null;
-            let prev = snake[i-1];
-            if(prev.x < p.x) angle=Math.PI; else if(prev.x > p.x) angle=0;
-            else if(prev.y < p.y) angle=-Math.PI/2; else if(prev.y > p.y) angle=Math.PI/2;
-        } else { img = assets.body ? bodyImg : null; }
-
-        if(img) {
-            ctx.save(); ctx.translate(p.x+10, p.y+10); ctx.rotate(angle);
-            ctx.drawImage(img, -10, -10, 20, 20); ctx.restore();
+    // ARKA PLAN ÇİZİMİ (EĞER RESİM YOKSA RENK KULLAN)
+    if(currentMod === 'NEON') {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0,0,400,400);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#39ff14";
+    } else {
+        ctx.shadowBlur = 0;
+        if(isBgLoaded) {
+            ctx.drawImage(assets.bg, 0, 0, 400, 400);
         } else {
-            ctx.fillStyle = i===0 ? "#39ff14" : "#28b40f"; ctx.fillRect(p.x, p.y, 20, 20);
+            ctx.fillStyle = "#1a1a2e"; // Resim yüklenmezse lacivert arka plan
+            ctx.fillRect(0,0,400,400);
         }
+    }
+
+    // Yılan
+    snake.forEach((p, i) => {
+        ctx.fillStyle = (i === 0) ? "#39ff14" : (currentMod === 'NEON' ? "#ff00ff" : "#28b40f");
+        ctx.fillRect(p.x, p.y, box-1, box-1);
     });
 
-    if(assets.apple) ctx.drawImage(appleImg, food.x, food.y, 20, 20);
-    else { ctx.fillStyle = "red"; ctx.fillRect(food.x, food.y, 20, 20); }
+    // Elma
+    try {
+        ctx.drawImage(assets.apple, food.x, food.y, box, box);
+    } catch(e) {
+        ctx.fillStyle = "red";
+        ctx.fillRect(food.x, food.y, box, box);
+    }
+
+    // Altın Elma
+    if(goldenFood) {
+        ctx.fillStyle = "gold";
+        ctx.shadowColor = "gold";
+        ctx.shadowBlur = 20;
+        ctx.beginPath(); ctx.arc(goldenFood.x+10, goldenFood.y+10, 8, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = (currentMod === 'NEON' ? 15 : 0);
+    }
 
     let headX = snake[0].x; let headY = snake[0].y;
     if(direction === "LEFT") headX -= box; else if(direction === "UP") headY -= box;
     else if(direction === "RIGHT") headX += box; else if(direction === "DOWN") headY += box;
 
-    if(headX<0 || headX>=400 || headY<0 || headY>=400 || snake.some(p=>p.x===headX && p.y===headY)) {
-        gameOver(); return;
+    if(currentMod === 'PORTAL') {
+        if(headX < 0) headX = 380; else if(headX > 380) headX = 0;
+        if(headY < 0) headY = 380; else if(headY > 380) headY = 0;
+    } else {
+        if(headX<0 || headX>=400 || headY<0 || headY>=400) { gameOver(); return; }
     }
 
+    if(snake.some(p=>p.x===headX && p.y===headY)) { gameOver(); return; }
+
     if(headX===food.x && headY===food.y) {
-        score++; eatSound.play().catch(()=>{});
-        document.getElementById("hud").innerText = "Puan: " + score;
-        spawnFood();
-    } else { snake.pop(); }
+        score++; spawnFood();
+        if(currentMod === 'HIZ') {
+            clearInterval(gameInterval);
+            gameInterval = setInterval(draw, Math.max(40, 120 - score*4));
+        }
+    } else if(goldenFood && headX===goldenFood.x && headY===goldenFood.y) {
+        score += 5; goldenFood = null;
+    } else {
+        snake.pop();
+    }
+    
     snake.unshift({x: headX, y: headY});
+    document.getElementById("hud").innerHTML = `Puan: ${score} <span style="color:#aaa; font-size:12px; margin-left:10px;">Mod: ${currentMod}</span>`;
 }
 
 function gameOver() {
-    isGameOver = true;
     clearInterval(gameInterval);
-    const finalScore = score;
-    document.getElementById("final-score-text").innerText = "Skorun: " + finalScore;
-    
-    // SKOR KAYDETME MANTIĞI: Herkesin tek bir rekoru olsun
-    db.ref('scores').push({
-        name: playerName,
-        score: parseInt(finalScore)
-    });
-
+    document.getElementById("final-score-text").innerText = "Skorun: " + score;
+    db.ref('scores').push({name: playerName, score: score, mod: currentMod});
     showScreen('gameover-screen');
 }
 
-function resetGame() { startGame(); }
-function backToMenu() { showScreen('menu-screen'); }
+function setDifficulty(v) { gameSpeed = v; showScreen('menu-screen'); }
 </script>
 </body>
 </html>
