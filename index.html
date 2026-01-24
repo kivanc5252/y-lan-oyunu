@@ -76,7 +76,7 @@ let score = 0;
 let snake = [];
 let food = {x:0, y:0};
 let direction = "RIGHT";
-let nextDirection = "RIGHT"; // Hızlı dönüşlerde bug olmaması için
+let nextDirection = "RIGHT"; 
 let currentMod = 'KLASİK';
 let playerName = localStorage.getItem("snakeName");
 
@@ -91,7 +91,7 @@ const bgImg = new Image(); bgImg.src = 'arka_plan.jpg';
 // SES
 const yeSes = new Audio('ye.mp3');
 
-// Firebase (Orijinal Ayarların)
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAWdCEJgOQmP-1A4bvYNxmzWsfnfJQ6-vE",
   authDomain: "yilanoyunu-96766.firebaseapp.com",
@@ -132,13 +132,21 @@ function selectMod(m) {
 
 function changeName() {
     let n = prompt("Yeni İsminiz:");
-    if(n) { playerName = n; localStorage.setItem("snakeName", n); }
+    if(n && n.trim() !== "") { 
+        playerName = n.trim(); 
+        localStorage.setItem("snakeName", playerName); 
+    }
 }
 
+// İSİM ZORUNLULUĞU BURADA
 function checkNameAndStart() {
-    if(!playerName) {
-        playerName = prompt("Adınız:");
-        if(!playerName) playerName = "Misafir";
+    if(!playerName || playerName.trim() === "" || playerName === "null") {
+        let n = prompt("Devam etmek için lütfen adınızı giriniz:");
+        if(!n || n.trim() === "") {
+            alert("İsim girmek zorunludur!");
+            return; // Fonksiyondan çıkar, oyunu başlatmaz
+        }
+        playerName = n.trim();
         localStorage.setItem("snakeName", playerName);
     }
     startGame();
@@ -149,7 +157,6 @@ function spawnFood() {
         x: Math.floor(Math.random() * 19) * box,
         y: Math.floor(Math.random() * 19) * box
     };
-    // Yılanın üstüne doğmasın
     for(let segment of snake) {
         if(segment.x === food.x && segment.y === food.y) spawnFood();
     }
@@ -171,7 +178,6 @@ function startGame() {
     let speed = 120;
     if(currentMod === 'HIZ') speed = 70;
     
-    // Hareketi başlatan asıl satır burası
     gameInterval = setInterval(draw, speed);
 }
 
@@ -185,7 +191,6 @@ document.addEventListener("keydown", e => {
 function draw() {
     direction = nextDirection;
     
-    // Arka Planı Çiz
     if(currentMod === 'NEON') {
         ctx.fillStyle = "#000";
         ctx.fillRect(0,0,400,400);
@@ -196,7 +201,6 @@ function draw() {
         ctx.fillRect(0,0,400,400);
     }
 
-    // Yem Çiz
     if(appleImg.complete && appleImg.naturalWidth !== 0) {
         ctx.drawImage(appleImg, food.x, food.y, box, box);
     } else {
@@ -204,7 +208,6 @@ function draw() {
         ctx.fillRect(food.x, food.y, box, box);
     }
 
-    // Yılanı Çiz
     snake.forEach((p, i) => {
         if(i === 0) {
             let img = headRight;
@@ -224,7 +227,6 @@ function draw() {
         }
     });
 
-    // Yeni Kafa Pozisyonu
     let headX = snake[0].x;
     let headY = snake[0].y;
 
@@ -233,13 +235,11 @@ function draw() {
     if(direction === "RIGHT") headX += box;
     if(direction === "DOWN") headY += box;
 
-    // Portal Modu Geçişleri
     if(currentMod === 'PORTAL') {
         if(headX < 0) headX = 380; else if(headX > 380) headX = 0;
         if(headY < 0) headY = 380; else if(headY > 380) headY = 0;
     }
 
-    // Çarpışma Kontrolü (Orijinal koddaki gibi)
     if(currentMod !== 'PORTAL' && (headX < 0 || headX >= 400 || headY < 0 || headY >= 400)) {
         return gameOver();
     }
@@ -248,10 +248,9 @@ function draw() {
         if(headX === snake[j].x && headY === snake[j].y) return gameOver();
     }
 
-    // Yemek Yeme Kontrolü
     if(headX === food.x && headY === food.y) {
         score++;
-        yeSes.play().catch(()=>{}); // Ses hatası verirse oyunu durdurmasın
+        yeSes.play().catch(()=>{}); 
         spawnFood();
     } else {
         snake.pop();
