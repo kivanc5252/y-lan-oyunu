@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Yılan - Mobil Uyumlu</title>
+    <title>Pro Yılan - 4 Yönlü Kuyruk</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
@@ -81,15 +81,20 @@ let nextDirection = "RIGHT";
 let currentMod = 'KLASİK';
 let playerName = localStorage.getItem("snakeName");
 
-// RESİMLER
+// RESİMLER (4 Yönlü Kafa ve Kuyruk)
 const headUp = new Image(); headUp.src = 'kafa_yukari.png';
 const headDown = new Image(); headDown.src = 'kafa_asagi.png';
 const headLeft = new Image(); headLeft.src = 'kafa_sol.png';
 const headRight = new Image(); headRight.src = 'kafa_sag.png';
+
+const tailUp = new Image(); tailUp.src = 'kuyruk_yukari.png';
+const tailDown = new Image(); tailDown.src = 'kuyruk_asagi.png';
+const tailLeft = new Image(); tailLeft.src = 'kuyruk_sol.png';
+const tailRight = new Image(); tailRight.src = 'kuyruk_sag.png';
+
+const govdeImg = new Image(); govdeImg.src = 'govde.png';
 const appleImg = new Image(); appleImg.src = 'elma.png';
 const bgImg = new Image(); bgImg.src = 'arka_plan.jpg';
-
-// SES
 const yeSes = new Audio('ye.mp3');
 
 // Firebase
@@ -105,7 +110,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Liderlik Tablosu
 db.ref('scores').on('value', snap => {
     let scoresMap = {};
     snap.forEach(c => {
@@ -133,19 +137,13 @@ function selectMod(m) {
 
 function changeName() {
     let n = prompt("Yeni İsminiz:");
-    if(n && n.trim() !== "") { 
-        playerName = n.trim(); 
-        localStorage.setItem("snakeName", playerName); 
-    }
+    if(n && n.trim() !== "") { playerName = n.trim(); localStorage.setItem("snakeName", playerName); }
 }
 
 function checkNameAndStart() {
     if(!playerName || playerName.trim() === "" || playerName === "null") {
         let n = prompt("Devam etmek için lütfen adınızı giriniz:");
-        if(!n || n.trim() === "") {
-            alert("İsim girmek zorunludur!");
-            return;
-        }
+        if(!n || n.trim() === "") { alert("İsim girmek zorunludur!"); return; }
         playerName = n.trim();
         localStorage.setItem("snakeName", playerName);
     }
@@ -153,32 +151,20 @@ function checkNameAndStart() {
 }
 
 function spawnFood() {
-    food = {
-        x: Math.floor(Math.random() * 19) * box,
-        y: Math.floor(Math.random() * 19) * box
-    };
-    for(let segment of snake) {
-        if(segment.x === food.x && segment.y === food.y) spawnFood();
-    }
+    food = { x: Math.floor(Math.random() * 19) * box, y: Math.floor(Math.random() * 19) * box };
+    if(snake.some(s => s.x === food.x && s.y === food.y)) spawnFood();
 }
 
 function startGame() {
     showScreen('none');
-    score = 0;
-    direction = "RIGHT";
-    nextDirection = "RIGHT";
-    snake = [
-        {x: 9 * box, y: 10 * box},
-        {x: 8 * box, y: 10 * box},
-        {x: 7 * box, y: 10 * box}
-    ];
+    score = 0; direction = "RIGHT"; nextDirection = "RIGHT";
+    snake = [{x: 9 * box, y: 10 * box}, {x: 8 * box, y: 10 * box}, {x: 7 * box, y: 10 * box}];
     spawnFood();
     if(gameInterval) clearInterval(gameInterval);
     let speed = currentMod === 'HIZ' ? 70 : 120;
     gameInterval = setInterval(draw, speed);
 }
 
-// KLAVYE KONTROLLERİ
 document.addEventListener("keydown", e => {
     if(e.keyCode == 37 && direction != "RIGHT") nextDirection = "LEFT";
     else if(e.keyCode == 38 && direction != "DOWN") nextDirection = "UP";
@@ -186,80 +172,53 @@ document.addEventListener("keydown", e => {
     else if(e.keyCode == 40 && direction != "UP") nextDirection = "DOWN";
 });
 
-// MOBİL KAYDIRMA (SWIPE) KONTROLLERİ
-let touchStartX = 0;
-let touchStartY = 0;
-
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, false);
-
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, false);
 document.addEventListener('touchend', e => {
-    let touchEndX = e.changedTouches[0].screenX;
-    let touchEndY = e.changedTouches[0].screenY;
-    handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
-}, false);
-
-function handleSwipe(startX, startY, endX, endY) {
-    const diffX = endX - startX;
-    const diffY = endY - startY;
-    // Hangi yönde daha çok kaydırıldığını bul (en az 30px kaydırma şartı)
-    if (Math.abs(diffX) > Math.abs(diffY)) {
-        if (Math.abs(diffX) > 30) {
-            if (diffX > 0 && direction !== "LEFT") nextDirection = "RIGHT";
-            else if (diffX < 0 && direction !== "RIGHT") nextDirection = "LEFT";
-        }
+    let dX = e.changedTouches[0].screenX - touchStartX;
+    let dY = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dX) > Math.abs(dY)) {
+        if (Math.abs(dX) > 30) { if (dX > 0 && direction !== "LEFT") nextDirection = "RIGHT"; else if (dX < 0 && direction !== "RIGHT") nextDirection = "LEFT"; }
     } else {
-        if (Math.abs(diffY) > 30) {
-            if (diffY > 0 && direction !== "UP") nextDirection = "DOWN";
-            else if (diffY < 0 && direction !== "DOWN") nextDirection = "UP";
-        }
+        if (Math.abs(dY) > 30) { if (dY > 0 && direction !== "UP") nextDirection = "DOWN"; else if (dY < 0 && direction !== "DOWN") nextDirection = "UP"; }
     }
-}
+}, false);
 
 function draw() {
     direction = nextDirection;
+    ctx.clearRect(0, 0, 400, 400);
     
-    if(currentMod === 'NEON') {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0,0,400,400);
-    } else if(bgImg.complete && bgImg.naturalWidth !== 0) {
-        ctx.drawImage(bgImg, 0, 0, 400, 400);
-    } else {
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0,0,400,400);
-    }
+    if(currentMod === 'NEON') { ctx.fillStyle = "#000"; ctx.fillRect(0,0,400,400); } 
+    else if(bgImg.complete && bgImg.naturalWidth !== 0) { ctx.drawImage(bgImg, 0, 0, 400, 400); } 
+    else { ctx.fillStyle = "#111"; ctx.fillRect(0,0,400,400); }
 
-    if(appleImg.complete && appleImg.naturalWidth !== 0) {
-        ctx.drawImage(appleImg, food.x, food.y, box, box);
-    } else {
-        ctx.fillStyle = "red";
-        ctx.fillRect(food.x, food.y, box, box);
-    }
+    if(appleImg.complete && appleImg.naturalWidth !== 0) { ctx.drawImage(appleImg, food.x, food.y, box, box); }
+    else { ctx.fillStyle = "red"; ctx.fillRect(food.x, food.y, box, box); }
 
     snake.forEach((p, i) => {
-        if(i === 0) {
-            let img = headRight;
-            if(direction === "UP") img = headUp;
-            else if(direction === "DOWN") img = headDown;
-            else if(direction === "LEFT") img = headLeft;
-            
-            if(img.complete && img.naturalWidth !== 0) {
-                ctx.drawImage(img, p.x - 5, p.y - 5, box + 10, box + 10);
-            } else {
-                ctx.fillStyle = "yellow";
-                ctx.fillRect(p.x, p.y, box, box);
-            }
-        } else {
-            ctx.fillStyle = (currentMod === 'NEON') ? "#ff00ff" : "#28b40f";
-            ctx.fillRect(p.x, p.y, box-1, box-1);
+        if(i === 0) { // KAFA ÇİZİMİ
+            let img = (direction === "UP") ? headUp : (direction === "DOWN") ? headDown : (direction === "LEFT") ? headLeft : headRight;
+            if(img.complete && img.naturalWidth !== 0) ctx.drawImage(img, p.x, p.y, box, box);
+            else { ctx.fillStyle = "yellow"; ctx.fillRect(p.x, p.y, box, box); }
+        } 
+        else if (i === snake.length - 1) { // 4 YÖNLÜ KUYRUK ÇİZİMİ
+            let prev = snake[i-1];
+            let tImg = tailRight;
+            if(prev.x < p.x) tImg = tailLeft;
+            else if(prev.x > p.x) tImg = tailRight;
+            else if(prev.y < p.y) tImg = tailUp;
+            else if(prev.y > p.y) tImg = tailDown;
+
+            if(tImg.complete && tImg.naturalWidth !== 0) ctx.drawImage(tImg, p.x, p.y, box, box);
+            else { ctx.fillStyle = "#1d800a"; ctx.fillRect(p.x, p.y, box, box); }
+        }
+        else { // GÖVDE ÇİZİMİ
+            if(govdeImg.complete && govdeImg.naturalWidth !== 0) ctx.drawImage(govdeImg, p.x, p.y, box, box);
+            else { ctx.fillStyle = (currentMod === 'NEON') ? "#ff00ff" : "#28b40f"; ctx.fillRect(p.x, p.y, box, box); }
         }
     });
 
-    let headX = snake[0].x;
-    let headY = snake[0].y;
-
+    let headX = snake[0].x; let headY = snake[0].y;
     if(direction === "LEFT") headX -= box;
     if(direction === "UP") headY -= box;
     if(direction === "RIGHT") headX += box;
@@ -268,23 +227,12 @@ function draw() {
     if(currentMod === 'PORTAL') {
         if(headX < 0) headX = 380; else if(headX > 380) headX = 0;
         if(headY < 0) headY = 380; else if(headY > 380) headY = 0;
-    }
+    } else if(headX < 0 || headX >= 400 || headY < 0 || headY >= 400) return gameOver();
 
-    if(currentMod !== 'PORTAL' && (headX < 0 || headX >= 400 || headY < 0 || headY >= 400)) {
-        return gameOver();
-    }
+    if(snake.some(s => s.x === headX && s.y === headY)) return gameOver();
 
-    for(let j=0; j<snake.length; j++) {
-        if(headX === snake[j].x && headY === snake[j].y) return gameOver();
-    }
-
-    if(headX === food.x && headY === food.y) {
-        score++;
-        yeSes.play().catch(()=>{}); 
-        spawnFood();
-    } else {
-        snake.pop();
-    }
+    if(headX === food.x && headY === food.y) { score++; yeSes.play().catch(()=>{}); spawnFood(); } 
+    else { snake.pop(); }
 
     snake.unshift({x: headX, y: headY});
     document.getElementById("hud").innerHTML = `Puan: ${score} <span style="font-size:11px; margin-left:10px;">Mod: ${currentMod}</span>`;
