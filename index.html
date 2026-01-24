@@ -2,13 +2,14 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Pro Yılan - Hareket Fix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Yılan - Mobil Uyumlu</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
-        body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #game-wrapper { position: relative; border: 5px solid #333; box-shadow: 0 0 30px rgba(0,255,0,0.4); border-radius: 8px; width: 400px; height: 400px; background: #111; }
-        canvas { display: block; background: #111; border-radius: 5px; }
+        body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; touch-action: none; }
+        #game-wrapper { position: relative; border: 5px solid #333; box-shadow: 0 0 30px rgba(0,255,0,0.4); border-radius: 8px; width: 400px; height: 400px; background: #111; max-width: 95vw; max-height: 95vw; }
+        canvas { display: block; background: #111; border-radius: 5px; width: 100%; height: 100%; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; padding: 20px; box-sizing: border-box; text-align: center; }
         .hidden { display: none; }
         h1 { color: #39ff14; text-shadow: 0 0 10px #39ff14; font-size: 1.8em; margin-bottom: 10px; }
@@ -138,13 +139,12 @@ function changeName() {
     }
 }
 
-// İSİM ZORUNLULUĞU BURADA
 function checkNameAndStart() {
     if(!playerName || playerName.trim() === "" || playerName === "null") {
         let n = prompt("Devam etmek için lütfen adınızı giriniz:");
         if(!n || n.trim() === "") {
             alert("İsim girmek zorunludur!");
-            return; // Fonksiyondan çıkar, oyunu başlatmaz
+            return;
         }
         playerName = n.trim();
         localStorage.setItem("snakeName", playerName);
@@ -174,19 +174,49 @@ function startGame() {
     ];
     spawnFood();
     if(gameInterval) clearInterval(gameInterval);
-    
-    let speed = 120;
-    if(currentMod === 'HIZ') speed = 70;
-    
+    let speed = currentMod === 'HIZ' ? 70 : 120;
     gameInterval = setInterval(draw, speed);
 }
 
+// KLAVYE KONTROLLERİ
 document.addEventListener("keydown", e => {
     if(e.keyCode == 37 && direction != "RIGHT") nextDirection = "LEFT";
     else if(e.keyCode == 38 && direction != "DOWN") nextDirection = "UP";
     else if(e.keyCode == 39 && direction != "LEFT") nextDirection = "RIGHT";
     else if(e.keyCode == 40 && direction != "UP") nextDirection = "DOWN";
 });
+
+// MOBİL KAYDIRMA (SWIPE) KONTROLLERİ
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, false);
+
+document.addEventListener('touchend', e => {
+    let touchEndX = e.changedTouches[0].screenX;
+    let touchEndY = e.changedTouches[0].screenY;
+    handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+}, false);
+
+function handleSwipe(startX, startY, endX, endY) {
+    const diffX = endX - startX;
+    const diffY = endY - startY;
+    // Hangi yönde daha çok kaydırıldığını bul (en az 30px kaydırma şartı)
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (Math.abs(diffX) > 30) {
+            if (diffX > 0 && direction !== "LEFT") nextDirection = "RIGHT";
+            else if (diffX < 0 && direction !== "RIGHT") nextDirection = "LEFT";
+        }
+    } else {
+        if (Math.abs(diffY) > 30) {
+            if (diffY > 0 && direction !== "UP") nextDirection = "DOWN";
+            else if (diffY < 0 && direction !== "DOWN") nextDirection = "UP";
+        }
+    }
+}
 
 function draw() {
     direction = nextDirection;
