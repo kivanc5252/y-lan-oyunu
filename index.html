@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Online Pro Yılan - Modlar Fix</title>
+    <title>Pro Yılan - Hareket Fix</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
@@ -15,12 +15,9 @@
         .menu-buttons { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: center; }
         button { background: #39ff14; border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 5px; width: 180px; font-size: 0.9em; transition: 0.2s; color: #000; }
         button:hover { background: #fff; transform: scale(1.05); }
-        .leaderboard-container { width: 100%; margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 5px; max-height: 140px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { position: sticky; top: 0; background: #222; color: #39ff14; padding: 5px; }
-        td { padding: 5px; border-bottom: 1px solid #222; }
-        .gold-row { background: rgba(255, 215, 0, 0.2) !important; color: #ffd700; font-weight: bold; border: 1px solid #ffd700; }
         #hud { position: absolute; top: 10px; left: 10px; font-size: 16px; font-weight: bold; color: #39ff14; z-index: 5; text-shadow: 1px 1px 2px #000; }
+        .leaderboard-container { width: 100%; margin-top: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 5px; max-height: 120px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -35,9 +32,7 @@
             <button onclick="showScreen('mods-screen')" style="background:#00d4ff">MODLAR</button>
             <button onclick="showScreen('settings-screen')" style="background:#888">AYARLAR</button>
         </div>
-        <div class="leaderboard-container">
-            <table id="menu-leaderboard"></table>
-        </div>
+        <div class="leaderboard-container"><table id="menu-leaderboard"></table></div>
     </div>
 
     <div id="mods-screen" class="overlay hidden">
@@ -52,12 +47,10 @@
     </div>
 
     <div id="settings-screen" class="overlay hidden">
-        <h2>HIZ AYARI</h2>
+        <h1>AYARLAR</h1>
         <div class="menu-buttons">
-            <button onclick="setDifficulty(180)">KOLAY</button>
-            <button onclick="setDifficulty(100)">ORTA</button>
-            <button onclick="setDifficulty(60)">ZOR</button>
-            <button onclick="showScreen('menu-screen')">GERİ</button>
+            <button onclick="changeName()">İSİM DEĞİŞTİR</button>
+            <button onclick="showScreen('menu-screen')" style="background:#555; color:white;">GERİ</button>
         </div>
     </div>
 
@@ -65,8 +58,8 @@
         <h1 style="color:#ff4444;">OYUN BİTTİ</h1>
         <h2 id="final-score-text">0</h2>
         <div class="menu-buttons">
-            <button onclick="startGame()">TEKRAR DENE</button>
-            <button onclick="showScreen('menu-screen')" style="background:#555">ANA MENÜ</button>
+            <button onclick="startGame()">TEKRAR OYNA</button>
+            <button onclick="showScreen('menu-screen')" style="background:#555; color:white;">ANA MENÜ</button>
         </div>
     </div>
 
@@ -77,12 +70,28 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const box = 20;
-let gameInterval, score, snake, food, goldenFood, direction, isGameOver = false;
-let gameSpeed = 100;
+
+let gameInterval = null;
+let score = 0;
+let snake = [];
+let food = {x:0, y:0};
+let direction = "RIGHT";
+let nextDirection = "RIGHT"; // Hızlı dönüşlerde bug olmaması için
 let currentMod = 'KLASİK';
 let playerName = localStorage.getItem("snakeName");
 
-// Firebase
+// RESİMLER
+const headUp = new Image(); headUp.src = 'kafa_yukari.png';
+const headDown = new Image(); headDown.src = 'kafa_asagi.png';
+const headLeft = new Image(); headLeft.src = 'kafa_sol.png';
+const headRight = new Image(); headRight.src = 'kafa_sag.png';
+const appleImg = new Image(); appleImg.src = 'elma.png';
+const bgImg = new Image(); bgImg.src = 'arka_plan.jpg';
+
+// SES
+const yeSes = new Audio('ye.mp3');
+
+// Firebase (Orijinal Ayarların)
 const firebaseConfig = {
   apiKey: "AIzaSyAWdCEJgOQmP-1A4bvYNxmzWsfnfJQ6-vE",
   authDomain: "yilanoyunu-96766.firebaseapp.com",
@@ -90,37 +99,30 @@ const firebaseConfig = {
   projectId: "yilanoyunu-96766",
   storageBucket: "yilanoyunu-96766.firebasestorage.app",
   messagingSenderId: "87313077711",
-  appId: "1:87313077711:web:6b90d8cbff959aa6a8eeba",
-  measurementId: "G-7SH1LDS1JV"
+  appId: "1:87313077711:web:6b90d8cbff959aa6a8eeba"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// GÖRSEL KONTROLÜ
-let assets = { bg: new Image(), apple: new Image() };
-let isBgLoaded = false;
-assets.bg.src = 'arka_plan.jpg'; 
-assets.bg.onload = () => { isBgLoaded = true; };
-assets.apple.src = 'elma.png';
-
+// Liderlik Tablosu
 db.ref('scores').on('value', snap => {
     let scoresMap = {};
     snap.forEach(c => {
         let val = c.val();
         if(!scoresMap[val.name] || val.score > scoresMap[val.name].score) scoresMap[val.name] = val;
     });
-    let sorted = Object.values(scoresMap).sort((a,b) => b.score - a.score);
+    let sorted = Object.values(scoresMap).sort((a,b) => b.score - a.score).slice(0, 5);
     const table = document.getElementById("menu-leaderboard");
     table.innerHTML = "<tr><th>#</th><th>Oyuncu</th><th>Skor</th></tr>";
     sorted.forEach((s, i) => {
-        let isGold = (i === 0);
-        table.innerHTML += `<tr class="${isGold ? 'gold-row' : ''}">
-            <td>${isGold ? '👑' : i+1}</td>
-            <td>${s.name}</td>
-            <td style="text-align:right">${s.score}</td>
-        </tr>`;
+        table.innerHTML += `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.score}</td></tr>`;
     });
 });
+
+function showScreen(id) {
+    document.querySelectorAll('.overlay').forEach(s => s.classList.add('hidden'));
+    if(id !== 'none') document.getElementById(id).classList.remove('hidden');
+}
 
 function selectMod(m) {
     currentMod = m;
@@ -128,119 +130,143 @@ function selectMod(m) {
     showScreen('menu-screen');
 }
 
-function showScreen(id) {
-    document.querySelectorAll('.overlay').forEach(s => s.classList.add('hidden'));
-    if(id !== 'none') document.getElementById(id).classList.remove('hidden');
+function changeName() {
+    let n = prompt("Yeni İsminiz:");
+    if(n) { playerName = n; localStorage.setItem("snakeName", n); }
 }
 
 function checkNameAndStart() {
     if(!playerName) {
         playerName = prompt("Adınız:");
-        if(!playerName) playerName = "Oyuncu" + Math.floor(Math.random()*99);
+        if(!playerName) playerName = "Misafir";
         localStorage.setItem("snakeName", playerName);
     }
     startGame();
 }
 
-function startGame() {
-    showScreen('none');
-    score = 0; direction = "RIGHT"; isGameOver = false;
-    snake = [{x: 9*box, y: 10*box}, {x: 8*box, y: 10*box}];
-    spawnFood();
-    if(gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(draw, currentMod === 'HIZ' ? 120 : gameSpeed);
+function spawnFood() {
+    food = {
+        x: Math.floor(Math.random() * 19) * box,
+        y: Math.floor(Math.random() * 19) * box
+    };
+    // Yılanın üstüne doğmasın
+    for(let segment of snake) {
+        if(segment.x === food.x && segment.y === food.y) spawnFood();
+    }
 }
 
-function spawnFood() {
-    food = { x: Math.floor(Math.random()*19)*box, y: Math.floor(Math.random()*19)*box };
-    goldenFood = Math.random() < 0.15 ? { x: Math.floor(Math.random()*19)*box, y: Math.floor(Math.random()*19)*box } : null;
+function startGame() {
+    showScreen('none');
+    score = 0;
+    direction = "RIGHT";
+    nextDirection = "RIGHT";
+    snake = [
+        {x: 9 * box, y: 10 * box},
+        {x: 8 * box, y: 10 * box},
+        {x: 7 * box, y: 10 * box}
+    ];
+    spawnFood();
+    if(gameInterval) clearInterval(gameInterval);
+    
+    let speed = 120;
+    if(currentMod === 'HIZ') speed = 70;
+    
+    // Hareketi başlatan asıl satır burası
+    gameInterval = setInterval(draw, speed);
 }
 
 document.addEventListener("keydown", e => {
-    const k = e.keyCode;
-    if(k == 37 && direction != "RIGHT") direction = "LEFT";
-    else if(k == 38 && direction != "DOWN") direction = "UP";
-    else if(k == 39 && direction != "LEFT") direction = "RIGHT";
-    else if(k == 40 && direction != "UP") direction = "DOWN";
+    if(e.keyCode == 37 && direction != "RIGHT") nextDirection = "LEFT";
+    else if(e.keyCode == 38 && direction != "DOWN") nextDirection = "UP";
+    else if(e.keyCode == 39 && direction != "LEFT") nextDirection = "RIGHT";
+    else if(e.keyCode == 40 && direction != "UP") nextDirection = "DOWN";
 });
 
 function draw() {
-    // ARKA PLAN ÇİZİMİ (EĞER RESİM YOKSA RENK KULLAN)
+    direction = nextDirection;
+    
+    // Arka Planı Çiz
     if(currentMod === 'NEON') {
-        ctx.fillStyle = "black";
+        ctx.fillStyle = "#000";
         ctx.fillRect(0,0,400,400);
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#39ff14";
+    } else if(bgImg.complete && bgImg.naturalWidth !== 0) {
+        ctx.drawImage(bgImg, 0, 0, 400, 400);
     } else {
-        ctx.shadowBlur = 0;
-        if(isBgLoaded) {
-            ctx.drawImage(assets.bg, 0, 0, 400, 400);
-        } else {
-            ctx.fillStyle = "#1a1a2e"; // Resim yüklenmezse lacivert arka plan
-            ctx.fillRect(0,0,400,400);
-        }
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0,0,400,400);
     }
 
-    // Yılan
-    snake.forEach((p, i) => {
-        ctx.fillStyle = (i === 0) ? "#39ff14" : (currentMod === 'NEON' ? "#ff00ff" : "#28b40f");
-        ctx.fillRect(p.x, p.y, box-1, box-1);
-    });
-
-    // Elma
-    try {
-        ctx.drawImage(assets.apple, food.x, food.y, box, box);
-    } catch(e) {
+    // Yem Çiz
+    if(appleImg.complete && appleImg.naturalWidth !== 0) {
+        ctx.drawImage(appleImg, food.x, food.y, box, box);
+    } else {
         ctx.fillStyle = "red";
         ctx.fillRect(food.x, food.y, box, box);
     }
 
-    // Altın Elma
-    if(goldenFood) {
-        ctx.fillStyle = "gold";
-        ctx.shadowColor = "gold";
-        ctx.shadowBlur = 20;
-        ctx.beginPath(); ctx.arc(goldenFood.x+10, goldenFood.y+10, 8, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = (currentMod === 'NEON' ? 15 : 0);
-    }
+    // Yılanı Çiz
+    snake.forEach((p, i) => {
+        if(i === 0) {
+            let img = headRight;
+            if(direction === "UP") img = headUp;
+            else if(direction === "DOWN") img = headDown;
+            else if(direction === "LEFT") img = headLeft;
+            
+            if(img.complete && img.naturalWidth !== 0) {
+                ctx.drawImage(img, p.x - 5, p.y - 5, box + 10, box + 10);
+            } else {
+                ctx.fillStyle = "yellow";
+                ctx.fillRect(p.x, p.y, box, box);
+            }
+        } else {
+            ctx.fillStyle = (currentMod === 'NEON') ? "#ff00ff" : "#28b40f";
+            ctx.fillRect(p.x, p.y, box-1, box-1);
+        }
+    });
 
-    let headX = snake[0].x; let headY = snake[0].y;
-    if(direction === "LEFT") headX -= box; else if(direction === "UP") headY -= box;
-    else if(direction === "RIGHT") headX += box; else if(direction === "DOWN") headY += box;
+    // Yeni Kafa Pozisyonu
+    let headX = snake[0].x;
+    let headY = snake[0].y;
 
+    if(direction === "LEFT") headX -= box;
+    if(direction === "UP") headY -= box;
+    if(direction === "RIGHT") headX += box;
+    if(direction === "DOWN") headY += box;
+
+    // Portal Modu Geçişleri
     if(currentMod === 'PORTAL') {
         if(headX < 0) headX = 380; else if(headX > 380) headX = 0;
         if(headY < 0) headY = 380; else if(headY > 380) headY = 0;
-    } else {
-        if(headX<0 || headX>=400 || headY<0 || headY>=400) { gameOver(); return; }
     }
 
-    if(snake.some(p=>p.x===headX && p.y===headY)) { gameOver(); return; }
+    // Çarpışma Kontrolü (Orijinal koddaki gibi)
+    if(currentMod !== 'PORTAL' && (headX < 0 || headX >= 400 || headY < 0 || headY >= 400)) {
+        return gameOver();
+    }
 
-    if(headX===food.x && headY===food.y) {
-        score++; spawnFood();
-        if(currentMod === 'HIZ') {
-            clearInterval(gameInterval);
-            gameInterval = setInterval(draw, Math.max(40, 120 - score*4));
-        }
-    } else if(goldenFood && headX===goldenFood.x && headY===goldenFood.y) {
-        score += 5; goldenFood = null;
+    for(let j=0; j<snake.length; j++) {
+        if(headX === snake[j].x && headY === snake[j].y) return gameOver();
+    }
+
+    // Yemek Yeme Kontrolü
+    if(headX === food.x && headY === food.y) {
+        score++;
+        yeSes.play().catch(()=>{}); // Ses hatası verirse oyunu durdurmasın
+        spawnFood();
     } else {
         snake.pop();
     }
-    
+
     snake.unshift({x: headX, y: headY});
-    document.getElementById("hud").innerHTML = `Puan: ${score} <span style="color:#aaa; font-size:12px; margin-left:10px;">Mod: ${currentMod}</span>`;
+    document.getElementById("hud").innerHTML = `Puan: ${score} <span style="font-size:11px; margin-left:10px;">Mod: ${currentMod}</span>`;
 }
 
 function gameOver() {
     clearInterval(gameInterval);
-    document.getElementById("final-score-text").innerText = "Skorun: " + score;
-    db.ref('scores').push({name: playerName, score: score, mod: currentMod});
+    document.getElementById("final-score-text").innerText = "Skor: " + score;
+    db.ref('scores').push({name: playerName, score: score});
     showScreen('gameover-screen');
 }
-
-function setDifficulty(v) { gameSpeed = v; showScreen('menu-screen'); }
 </script>
 </body>
 </html>
